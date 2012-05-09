@@ -1,0 +1,40 @@
+#QuickNavContainer, #QuickNavInnerContainer{ /** Main form container **/
+    width: 500px;
+}
+#QuickNavContainer li:hover{
+    background-color: #333333;
+}
+.QuickNav{
+    float: left;
+    margin-top: 5px;
+    width: 238px;
+    padding: 0px 5px;
+}
+
+#QuickLeftNav {
+
+}
+#QuickRightNav{
+    overflow-y: auto;
+    max-height: 400px;
+    border-left: 3px solid #444444;
+
+}
+
+
+#QuickNavContainer h4{
+    border-bottom: 3px solid #444444;
+    margin-bottom: 5px;
+    font-weight: bold;
+    padding-bottom: 2px;
+
+
+}
+.QuickNav1{
+    border-bottom: 1px solid #444444;
+}
+#QuickNavContainer h2{
+}
+#QuickNavContainer a{
+    color: #00ACFF;
+}
