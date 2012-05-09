@@ -84,10 +84,6 @@ class TraditionalPlugin extends Gdn_Plugin {
 
 
         //TEMPPORARYRYRYRYRYRYRY
-        $Controller = strtolower($Sender->ControllerName);
-        $Application = strtolower($Sender->ApplicationFolder);
-        $Session = Gdn::Session();
-        $ShowOnController = array();
         if ($Sender->SelfUrl != 'categories/all')
             return;
         include_once(PATH_PLUGINS . DS . 'Traditional' . DS . 'class.profilemodule.php');
@@ -676,7 +672,7 @@ class TraditionalPlugin extends Gdn_Plugin {
 
     private function _GetLatestPost($CategoryID) {
         $DiscussionModel = new DiscussionModel();
-        $CategoryModel = new CategoryModel();
+        //$CategoryModel = new CategoryModel();
         $ChildTemp = array();
 
         //Get first level
