@@ -38,10 +38,7 @@ class TraditionalPlugin extends Gdn_Plugin {
 //            print_r(($_COOKIE['VanillaCat']));
     }
 
-
-
 //@todo...LESS CSS implementation in next release
-
 //        if (property_exists($Sender, 'Head') && is_object($Sender->Head)) {
 //            $Sender->Head->AddString(
 //                    '<link rel="stylesheet/less" type="text/css" href="/' . Gdn::Request()->WebRoot() . '/plugins/Traditional/design/styles.less" />'
@@ -49,8 +46,8 @@ class TraditionalPlugin extends Gdn_Plugin {
 //            );
 //        }
 //        $Sender->AddJsFile('less-1.3.0.min.js', 'plugins/Traditional/'); //for LESS CSS -> Regular CSS
-        //@warning in a production envirnoment, use the compiled CSS without always needing to convert on every page load
-        //add this after the .less stylesheet
+    //@warning in a production envirnoment, use the compiled CSS without always needing to convert on every page load
+    //add this after the .less stylesheet
 
     /**
      * Base_Render_Before Event Hook
@@ -63,7 +60,12 @@ class TraditionalPlugin extends Gdn_Plugin {
         if ($Sender->ControllerName == 'categoriescontroller')
             $Sender->AddJsFile('jquery.cookie.js', 'plugins/Traditional/'); //keep track of which categories are expanded/hidden
 
-        //News ticker stuff
+
+
+
+
+
+//News ticker stuff
         if ($Sender->SelfUrl == 'activity' || ((strpos($Sender->SelfUrl, 'discussions/p') !== FALSE)) || $Sender->SelfUrl === 'discussions') {
             $Sender->AddJsFile('jquery.ticker.js', 'plugins/Traditional/'); //for LESS CSS -> Regular CSS
             $Sender->AddCssFile('/plugins/Traditional/design/ticker-style.css');
@@ -302,7 +304,7 @@ class TraditionalPlugin extends Gdn_Plugin {
                 <li<?php echo ($Sender->SelfUrl != 'activity' && !((strpos($Sender->SelfUrl, 'discussions/p') !== FALSE) || $Sender->SelfUrl === 'discussions')) ? ' class="Active"' : ''; ?>><?php echo Anchor('Forum', '/') ?></li>
                 <li<?php echo strtolower($Sender->SelfUrl) == 'activity' ? ' class="Active"' : ''; ?>><?php echo Anchor(T('Recent Activity'), 'activity'); ?></li>
                 <li<?php echo ((strpos($Sender->SelfUrl, 'discussions/p') !== FALSE) || $Sender->SelfUrl === 'discussions') ? ' class="Active"' : ''; ?>><?php echo Anchor(T("What's New?"), 'discussions'); ?></li>
-                <li><?php //echo Anchor(T('Members'), '/') //coming soon ?></li>
+                <li><?php //echo Anchor(T('Members'), '/') //coming soon      ?></li>
             </ul>
         </div>
         <?php
@@ -651,7 +653,6 @@ class TraditionalPlugin extends Gdn_Plugin {
     private function _GetChildIDs($CatID) {
         $ID_Array = array();
         $DiscussionModel = new DiscussionModel();
-
         /**
          * @todo don't select any threads that are sunken or closed
          */
@@ -696,56 +697,60 @@ class TraditionalPlugin extends Gdn_Plugin {
         else
             $ChildrenMasterList = array($CategoryID);
 
-        //print_r($ChildrenMasterList);
         //Now that all Category IDs are collected, the latest post of all
         //of the categories can be obtained
-        ///@todo join this into one query where it first checks if d.LastCommentUserID exists
-        //$DiscussionModel->Reset();
-        $LatestPostInfo = $DiscussionModel->SQL
-                        ->Select('u.Name as LastName,
-                            u.UserID as LastUserID,
-                            u.Photo as LastPhoto,
-                            u.Email as LastEmail,
-                            u.Gender as LastGender,
-                            d.Name as LastDiscussionTitle,
-                            d.LastCommentUserID as LastCommentID,
-                            d.InsertUserID,d.DateLastComment,
-                            d.DiscussionID as LastDiscussionID'
-                        ) //get original poster in case no added comments
-                        ->From('Discussion d')
-                        ->Join('User u', 'u.UserID = d.LastCommentUserID', 'inner')
-                        ->WhereIn('d.CategoryID', $ChildrenMasterList)
-                        ->OrderBy('d.DateLastComment', 'desc') //DateLastComment == DateInserted if no comments yet
-                        ->Limit('1', 0)
-                        ->Get()->ResultArray();
-        //print_r($LatestPostInfo);
 
-        if (empty($LatestPostInfo)) {
-            //Get here if no posts...now check if any threads with no recent comments
-            $LatestPostInfo = $DiscussionModel->SQL
-                            ->Select('u.Name as LastName,
-                            u.UserID as LastUserID,
-                            u.Photo as LastPhoto,
-                            u.Email as LastEmail,
-                            u.Gender as LastGender,
-                            d.Name as LastDiscussionTitle,
-                            d.LastCommentUserID as LastCommentID,
-                            d.InsertUserID,d.DateLastComment,
-                            d.DiscussionID as LastDiscussionID'
-                            ) //get original poster in case no added comments
-                            ->From('Discussion d')
-                            ->Join('User u', 'u.UserID = d.InsertUserID', 'inner')
-                            ->WhereIn('d.CategoryID', $ChildrenMasterList)
-                            ->OrderBy('d.DateLastComment', 'desc') //DateLastComment == DateInserted if no comments yet
-                            ->Limit('1', 0)
-                            ->Get()->ResultArray();
-            if (empty($LatestPostInfo))
-                return FALSE;
-            else
-                return $LatestPostInfo[0];
-        }
-        else
-            return $LatestPostInfo[0];
+        //The follwing UNION checks both cases when no replies are present (d.LastCommentUserID == null)
+        //and when there is a last comment ID
+
+        $WhereIn = $this->WhereIn('d.CategoryID', $ChildrenMasterList);
+
+        $Prefix = C('Database.DatabasePrefix');
+        $DbName = C('Database.Name');
+        $DB = $DbName . '.' . $Prefix;
+        $Table = $DB . 'Discussion d';
+        $Query = "
+        (select
+        u.Name as `LastName`,
+        u.UserID as `LastUserID`,
+        u.Photo as `LastPhoto`,
+        d.Name as `LastDiscussionTitle`,
+        d.LastCommentUserID as `LastCommentID`,
+        d.InsertUserID as `InsertUserID`,
+        d.DateLastComment as `DateLastComment`,
+        d.DiscussionID as `LastDiscussionID`
+        from $Table
+        inner join {$DB}User u on u.UserID = d.LastCommentUserID
+        where $WhereIn
+        order by d.DateLastComment
+        desc limit 1)
+
+        UNION
+
+        (select
+        u.Name as `LastName`,
+        u.UserID as `LastUserID`,
+        u.Photo as `LastPhoto`,
+        d.Name as `LastDiscussionTitle`,
+        d.LastCommentUserID as `LastCommentID`,
+        d.InsertUserID as `InsertUserID`,
+        d.DateLastComment as `DateLastComment`,
+        d.DiscussionID as `LastDiscussionID`
+        from $Table
+        inner join {$DB}User u on u.UserID = d.InsertUserID
+        where $WhereIn
+        order by d.DateLastComment
+        desc limit 1)
+
+        ORDER by DateLastComment
+        desc limit 1
+
+        ";
+
+        $SQL = Gdn::SQL();
+        $Result = $SQL->Query($Query)->FirstRow();
+
+        return $Result;
     }
 
     private function _SearchPagerCandidate($Pager) {
@@ -866,6 +871,36 @@ class TraditionalPlugin extends Gdn_Plugin {
                 echo '</div></div>';
             }
         }
+    }
+
+    /**
+     *  copy of the class.sqldriver for a convient wherin plain sql query
+     *
+     * @param type $Field
+     * @param type $Values
+     * @param type $Op
+     * @param type $Escape
+     * @return string
+     */
+    private function WhereIn($Field, $Values, $Op = 'in', $Escape = TRUE) {
+        if (is_null($Field) || !is_array($Values))
+            return;
+        // Build up the in clause.
+        $In = array();
+        foreach ($Values as $Value) {
+            $ValueExpr = (string) $Value;
+
+            if (strlen($ValueExpr) > 0)
+                $In[] = $ValueExpr;
+        }
+        if (count($In) > 0)
+            $InExpr = '(' . implode(', ', $In) . ')';
+        else
+            $InExpr = '(null)';
+
+        // Set the final expression.
+        $Expr = $Field . ' ' . $Op . ' ' . $InExpr;
+        return $Expr;
     }
 
     /*     * ******************************ProfileModule******************************* */
