@@ -722,7 +722,7 @@ class TraditionalPlugin extends Gdn_Plugin {
         from $Table
         inner join {$DB}User u on u.UserID = d.LastCommentUserID
         where $WhereIn
-        order by d.DateLastComment
+        order by DateLastComment
         desc limit 1)
 
         UNION
@@ -734,12 +734,12 @@ class TraditionalPlugin extends Gdn_Plugin {
         d.Name as `LastDiscussionTitle`,
         d.LastCommentUserID as `LastCommentID`,
         d.InsertUserID as `InsertUserID`,
-        d.DateLastComment as `DateLastComment`,
+        d.DateInserted as `DateLastComment`,
         d.DiscussionID as `LastDiscussionID`
         from $Table
         inner join {$DB}User u on u.UserID = d.InsertUserID
         where $WhereIn
-        order by d.DateLastComment
+        order by DateLastComment
         desc limit 1)
 
         ORDER by DateLastComment
@@ -749,6 +749,7 @@ class TraditionalPlugin extends Gdn_Plugin {
 
         $SQL = Gdn::SQL();
         $Result = $SQL->Query($Query)->FirstRow();
+
 
         return $Result;
     }
@@ -855,7 +856,7 @@ class TraditionalPlugin extends Gdn_Plugin {
         $ControllerList = array(//list of controllers to NOT allow the view of the panel
             'profilecontroller',
             'discussioncontroller',
-            'searchcontroller',
+           // 'searchcontroller',
         );
         //print_r($this->Assets['Panel']); die;
         if (!in_array(strtolower($Sender->ControllerName), $ControllerList)) {
@@ -865,6 +866,12 @@ class TraditionalPlugin extends Gdn_Plugin {
             unset($this->Assets['Panel']['CategoryFollowToggleModule']);
 
             if (C('Plugin.Traditional.SidePanel', TRUE) || $Sender->ControllerName == 'messagescontroller') { //always alllow panel in conversations
+                echo '<div id="PanelHolder">';
+                echo '<div id="Panel">';
+                echo $Sender->RenderAsset('Panel');
+                echo '</div></div>';
+            }
+            if(strtolower($Sender->ControllerName) == 'searchcontroller'){ //allow the sidebar in the search controller
                 echo '<div id="PanelHolder">';
                 echo '<div id="Panel">';
                 echo $Sender->RenderAsset('Panel');
